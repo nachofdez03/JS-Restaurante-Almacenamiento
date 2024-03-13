@@ -10,16 +10,24 @@ import {
 } from "./Restaurant.js";
 
 import RestaurantsManager from "./Restaurant.js";
+import { getCookie } from "./util.js";
 
 // Creamos los Symbol que las usaremos como campos privados
 const MODEL = Symbol("RestaurantModel");
 const VIEW = Symbol("RestarantView");
 const LOAD_RESTAURANT_OBJECTS = Symbol("Load Restaurant Objects");
 
+// Uso de cookies y sesiones
+const AUTH = Symbol("AUTH");
+const USER = Symbol("USER");
+const LANGUAGE = Symbol("LANGUAGE");
+
 class RestaurantController {
-  constructor(model, view) {
+  constructor(model, view, auth) {
     this[MODEL] = model; // Instancia de RestaurantManager
     this[VIEW] = view; // Instancia de RestaurantView
+    this[AUTH] = auth; // Instancia de la autenticacion
+    this[USER] = null; // Usuario
 
     this.onLoad(); // Se invocará cada vez que se inicia la página, por lo que meteremos en el método todo lo que queremos que se inicie
     this.onInit(); // El que ejecuta los métodos de la vista
@@ -27,7 +35,6 @@ class RestaurantController {
     this.onAddAllergen();
     this.onAddMenu();
     this.onAddRestaurant();
-    this.onAddform();
 
     this[VIEW].bindInit(this.handleInit); // El Onit de antes para cuando se reinicie, y aqui para cuando se le da
   }
@@ -152,12 +159,27 @@ class RestaurantController {
   1;
   // Ahora creamos un método de aplicación que estará en el constructor, se invocará con cada recarga
   onLoad = () => {
+    if (getCookie("accetedCookieMessage") !== "true") {
+      this[VIEW].showCookiesMessage();
+    }
+    const userCookie = getCookie("activeUser");
+    console.log(userCookie);
+    if (userCookie) {
+      const user = this[AUTH].getUser(userCookie);
+      if (user) {
+        this[USER] = user;
+        this.onOpenSession();
+      }
+    } else {
+      this[VIEW].showIdentificationLink();
+      this[VIEW].bindIdentificationLink(this.handleLoginForm);
+    }
+
     this[LOAD_RESTAURANT_OBJECTS]();
     this[VIEW].showCategoriesinMenu(this[MODEL].getterCategories()); // Mostrara las categorias en el menu del nav
     this[VIEW].showAllergensinMenu(this[MODEL].getterAllergens());
     this[VIEW].showMenusinMenu(this[MODEL].getterMenus());
     this[VIEW].showRestaurantsinMenu(this[MODEL].getterRestaurants());
-    this[VIEW].showAdminMenu();
   };
 
   // Ejecutará los métodos de la Vista, se invocará con reinicio de la aplicación o con petición del usuario
@@ -187,7 +209,24 @@ class RestaurantController {
     this[VIEW].bindRestaurantsDishesMenu(this.handleRestaurant);
   };
 
-  onAddform = () => {
+  // Manejador
+  handleInit = () => {
+    this.onInit();
+  };
+
+  onCloseSession() {
+    this[USER] = null;
+    this[VIEW].deleteUserCookie();
+    this[VIEW].showIdentificationLink();
+    this[VIEW].bindIdentificationLink(this.handleLoginForm);
+    this[VIEW].removeAdminMenu();
+  }
+
+  onOpenSession() {
+    this[VIEW].initHistory();
+    this[VIEW].showAuthUserProfile(this[USER]);
+    this[VIEW].showAdminMenu();
+    this[VIEW].bindCloseSession(this.handleCloseSession);
     this[VIEW].bindAdminMenu(
       this.handleNewDishForm,
       this.handleRemoveDishForm,
@@ -197,12 +236,7 @@ class RestaurantController {
       this.handleRemoveCategoryForm,
       this.handleNewRestaurantForm
     );
-  };
-
-  // Manejador
-  handleInit = () => {
-    this.onInit();
-  };
+  }
 
   // Manejador de dishes
 
@@ -544,6 +578,32 @@ class RestaurantController {
 
     // Modal
     this[VIEW].showNewRestaurantModal(done, restaurant, error);
+  };
+
+  handleLoginForm = () => {
+    this[VIEW].showLogin();
+    this[VIEW].bindLogin(this.handleLogin);
+  };
+
+  handleLogin = (username, password, remember) => {
+    if (this[AUTH].validateUser(username, password)) {
+      this[USER] = this[AUTH].getUser(username);
+      this.onOpenSession();
+      console.log("Todo correcto");
+
+      if (remember) {
+        this[VIEW].setUserCookie(this[USER]);
+      }
+    } else {
+      this[VIEW].showInvalidUserMessage();
+    }
+  };
+
+  handleCloseSession = () => {
+    this.onCloseSession();
+    this.onInit();
+    ShoppingCartApp.onInit();
+    this[VIEW].initHistory();
   };
 }
 

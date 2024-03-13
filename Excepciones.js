@@ -37,9 +37,19 @@ class NoRegistryException extends BaseException {
   }
 }
 
+//El parametro esta vacio
+class EmptyValueException extends BaseException {
+  constructor(param) {
+    super(param + " no existe");
+    this.param = param;
+    this.name = "EmptyValueException";
+  }
+}
+
 export {
   BaseException,
   ParameterInvalidException,
   ExistsException,
   NoRegistryException,
+  EmptyValueException,
 };
