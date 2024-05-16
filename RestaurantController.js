@@ -156,7 +156,7 @@ class RestaurantController {
     this[MODEL].assignDishToMenu(menuVegetariano, ensalada, macarrones, nueces);
     this[MODEL].assignDishToMenu(menuDeLaCasa, kebab, pizza, macarrones);
   }
-  1;
+
   // Ahora creamos un método de aplicación que estará en el constructor, se invocará con cada recarga
   onLoad = () => {
     if (getCookie("accetedCookieMessage") !== "true") {
@@ -164,6 +164,7 @@ class RestaurantController {
     }
     const userCookie = getCookie("activeUser");
     console.log(userCookie);
+
     if (userCookie) {
       const user = this[AUTH].getUser(userCookie);
       if (user) {
